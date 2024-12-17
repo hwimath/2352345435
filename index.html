@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>휘매쓰 연산 챌린지!</title>
+    <style>
+        /* 폰트 로드 */
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+        }
+        #game-container {
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        h1 {
+            color: #333;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+        #difficulty-selection, #game-screen, #result-screen {
+            display: none;
+        }
+        .button {
+            padding: 15px 30px;
+            font-size: 24px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            background-color: #ff7f50;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .button:hover {
+            background-color: #ff6347;
+            transform: translateY(-3px);
+        }
+        #energy-bar {
+            width: 100%;
+            background-color: #ddd;
+            margin: 20px 0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        #energy-fill {
+            width: 100%;
+            height: 100%;
+            background-color: #32cd32;
+            transition: width 0.1s linear;
+        }
+        #question {
+            font-size: 28px;
+            margin: 20px 0;
+            color: #333;
+        }
+        #score, #chance, #total-time {
+            font-size: 20px;
+            margin: 10px 0;
+            color: #555;
+        }
+        #answer-input {
+            padding: 12px;
+            font-size: 20px;
+            width: 80%;
+            max-width: 300px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        #answer-input:focus {
+            border-color: #32cd32;
+        }
+        #feedback {
+            font-size: 20px;
+            margin: 20px 0;
+            height: 24px;
+            color: #333;
+        }
+        #result-screen h2 {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #result-screen p {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        /* 반응형 디자인 */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 36px;
+            }
+            .button {
+                font-size: 20px;
+                padding: 12px 24px;
+            }
+            #answer-input {
+                font-size: 18px;
+            }
+            #question {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>휘매쓰 연산 챌린지!</h1>
+
+    <!-- 난이도 선택 화면 -->
+    <div id="difficulty-selection">
+        <p style="font-size: 24px; color: #333;">난이도를 선택하세요:</p>
+        <button class="button" onclick="startGame('상')">상</button>
+        <button class="button" onclick="startGame('중')">중</button>
+        <button class="button" onclick="startGame('하')">하</button>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-screen">
+        <!-- 남은 시간 표시 제거 -->
+        <!-- <div id="time">남은 시간: <span id="time-remaining"></span>초</div> -->
+        <div id="total-time">총 소요 시간: <span id="total-time-elapsed">0</span>초</div>
+        <!-- 총 문제수 표시 제거 -->
+        <!-- <div id="chance">문제: <span id="current-problem-number">1</span>/<span id="total-problems"></span></div> -->
+        <div id="chance">남은 기회: <span id="remaining-chances">3</span>/3</div>
+        <div id="score">점수: <span id="current-score">0</span></div>
+        <div id="question"></div>
+        <input type="text" id="answer-input" onkeypress="handleKeyPress(event)">
+        <button class="button" onclick="submitAnswer()">제출</button>
+        <div id="feedback"></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result-screen">
+        <h2>게임 종료!</h2>
+        <p>최종 점수: <span id="final-score"></span></p>
+        <p>총 소요 시간: <span id="final-time"></span>초</p>
+        <button class="button" onclick="restartGame()">다시 시작</button>
+    </div>
+</div>
+
+<script>
+    // 문제 리스트 (이전과 동일)
+    const problems = [
+        // 약수의 개수 구하기
+        { question: "1의 약수의 개수를 구하시오.", answer: "1" },
+        { question: "2의 약수의 개수를 구하시오.", answer: "2" },
+       { question: "3의 약수의 개수를 구하시오.", answer: "2" },
+        { question: "4의 약수의 개수를 구하시오.", answer: "3" },
+        { question: "5의 약수의 개수를 구하시오.", answer: "2" },
+        { question: "6의 약수의 개수를 구하시오.", answer: "4" },
+        { question: "7의 약수의 개수를 구하시오.", answer: "2" },
+        { question: "8의 약수의 개수를 구하시오.", answer: "4" },
+        { question: "9의 약수의 개수를 구하시오.", answer: "3" },
+        { question: "10의 약수의 개수를 구하시오.", answer: "4" },
+        { question: "12의 약수의 개수를 구하시오.", answer: "6" },
+        { question: "15의 약수의 개수를 구하시오.", answer: "4" },
+        { question: "16의 약수의 개수를 구하시오.", answer: "5" },
+        { question: "18의 약수의 개수를 구하시오.", answer: "6" },
+        { question: "20의 약수의 개수를 구하시오.", answer: "6" },
+        { question: "24의 약수의 개수를 구하시오.", answer: "8" },
+        { question: "28의 약수의 개수를 구하시오.", answer: "6" },
+
+        // 최대공약수 구하기
+        { question: "2와 4의 최대공약수를 구하시오.", answer: "2" },
+        { question: "3과 6의 최대공약수를 구하시오.", answer: "3" },
+        { question: "4와 8의 최대공약수를 구하시오.", answer: "4" },
+        { question: "5와 10의 최대공약수를 구하시오.", answer: "5" },
+        { question: "6과 9의 최대공약수를 구하시오.", answer: "3" },
+        { question: "7과 14의 최대공약수를 구하시오.", answer: "7" },
+        { question: "8과 12의 최대공약수를 구하시오.", answer: "4" },
+        { question: "9와 15의 최대공약수를 구하시오.", answer: "3" },
+        { question: "10과 20의 최대공약수를 구하시오.", answer: "10" },
+        { question: "12와 18의 최대공약수를 구하시오.", answer: "6" },
+        { question: "14와 21의 최대공약수를 구하시오.", answer: "7" },
+        { question: "16과 24의 최대공약수를 구하시오.", answer: "8" },
+        { question: "18과 27의 최대공약수를 구하시오.", answer: "9" },
+        { question: "20과 30의 최대공약수를 구하시오.", answer: "10" },
+        { question: "22와 33의 최대공약수를 구하시오.", answer: "11" },
+        { question: "24와 28의 최대공약수를 구하시오.", answer: "4" },
+        { question: "25와 30의 최대공약수를 구하시오.", answer: "5" },
+
+        // 최소공배수 구하기
+        { question: "2와 3의 최소공배수를 구하시오.", answer: "6" },
+        { question: "4와 5의 최소공배수를 구하시오.", answer: "20" },
+        { question: "6과 8의 최소공배수를 구하시오.", answer: "24" },
+        { question: "7과 9의 최소공배수를 구하시오.", answer: "63" },
+        { question: "10과 15의 최소공배수를 구하시오.", answer: "30" },
+        { question: "12와 16의 최소공배수를 구하시오.", answer: "48" },
+        { question: "14와 21의 최소공배수를 구하시오.", answer: "42" },
+        { question: "18과 24의 최소공배수를 구하시오.", answer: "72" },
+        { question: "20과 25의 최소공배수를 구하시오.", answer: "100" },
+        { question: "22와 11의 최소공배수를 구하시오.", answer: "22" },
+        { question: "8과 14의 최소공배수를 구하시오.", answer: "56" },
+        { question: "9과 12의 최소공배수를 구하시오.", answer: "36" },
+        { question: "5와 6의 최소공배수를 구하시오.", answer: "30" },
+        { question: "15와 20의 최소공배수를 구하시오.", answer: "60" },
+        { question: "16과 18의 최소공배수를 구하시오.", answer: "144" },
+        { question: "24와 30의 최소공배수를 구하시오.", answer: "120" }
+    ];
+
+    // 난이도 설정 (이전과 동일)
+    const difficultyLevels = {
+        "상": { time: 20, score: 20 },
+        "중": { time: 30, score: 15 },
+        "하": { time: 40, score: 10 }
+    };
+
+    let selectedDifficulty;
+    let timeLimit;
+    let scoreIncrement;
+    let score = 0;
+    let currentProblemIndex = 0;
+    let timerInterval;
+    let startTime;
+    let energyPercent = 100;
+    let totalTimeElapsed = 0;
+    let totalProblems = problems.length;
+    let remainingChances = 3;
+
+    const difficultySelection = document.getElementById('difficulty-selection');
+    const gameScreen = document.getElementById('game-screen');
+    const resultScreen = document.getElementById('result-screen');
+    // const timeRemainingElement = document.getElementById('time-remaining');
+    // const energyFill = document.getElementById('energy-fill');
+    const currentScoreElement = document.getElementById('current-score');
+    const questionElement = document.getElementById('question');
+    const answerInput = document.getElementById('answer-input');
+    const feedbackElement = document.getElementById('feedback');
+    const finalScoreElement = document.getElementById('final-score');
+    const totalTimeElement = document.getElementById('total-time-elapsed');
+    const finalTimeElement = document.getElementById('final-time');
+    // const currentProblemNumberElement = document.getElementById('current-problem-number');
+    // const totalProblemsElement = document.getElementById('total-problems');
+    const remainingChancesElement = document.getElementById('remaining-chances');
+
+    function showScreen(screen) {
+        difficultySelection.style.display = 'none';
+        gameScreen.style.display = 'none';
+        resultScreen.style.display = 'none';
+
+        screen.style.display = 'block';
+    }
+
+    function startGame(difficulty) {
+        selectedDifficulty = difficulty;
+        timeLimit = difficultyLevels[difficulty].time;
+        scoreIncrement = difficultyLevels[difficulty].score;
+        score = 0;
+        energyPercent = 100;
+        totalTimeElapsed = 0;
+        currentProblemIndex = 0;
+        remainingChances = 3;
+
+        problems.sort(() => Math.random() - 0.5); // 문제 섞기
+
+        // 총 문제수 표시 제거
+        // totalProblemsElement.textContent = totalProblems;
+        // currentProblemNumberElement.textContent = currentProblemIndex + 1;
+        remainingChancesElement.textContent = remainingChances;
+
+        showScreen(gameScreen);
+        updateScore();
+        nextProblem();
+        // updateTimer(); // 남은 시간 표시 제거
+        startTime = Date.now();
+        timerInterval = setInterval(updateTotalTime, 100);
+    }
+
+    function updateScore() {
+        currentScoreElement.textContent = score;
+    }
+
+    function updateTotalTime() {
+        totalTimeElapsed = Math.floor((Date.now() - startTime) / 1000);
+        totalTimeElement.textContent = totalTimeElapsed;
+    }
+
+    function nextProblem() {
+        if (remainingChances <= 0) {
+            endGame();
+            return;
+        }
+
+        const currentProblem = problems[currentProblemIndex];
+        questionElement.textContent = currentProblem.question;
+        answerInput.value = '';
+        feedbackElement.textContent = '';
+        answerInput.focus();
+        // 총 문제수 표시 제거
+        // currentProblemNumberElement.textContent = currentProblemIndex + 1;
+
+        // 시간 감소 로직 제거
+        // timeLimit *= 0.99;
+        // startTime = Date.now();
+    }
+
+    function submitAnswer() {
+        const userAnswer = answerInput.value.trim();
+        const correctAnswer = problems[currentProblemIndex].answer;
+
+        if (userAnswer === correctAnswer) {
+            score += scoreIncrement;
+            feedbackElement.textContent = '정답입니다!';
+            feedbackElement.style.color = 'green';
+        } else {
+            feedbackElement.textContent = `오답입니다. 정답은 ${correctAnswer}입니다.`;
+            feedbackElement.style.color = 'red';
+            remainingChances--;
+            remainingChancesElement.textContent = remainingChances;
+        }
+
+        updateScore();
+        currentProblemIndex++;
+        if (remainingChances > 0) {
+            nextProblem();
+        } else {
+            endGame();
+        }
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        showScreen(resultScreen);
+        finalScoreElement.textContent = score;
+        finalTimeElement.textContent = totalTimeElapsed;
+    }
+
+    function restartGame() {
+        showScreen(difficultySelection);
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            submitAnswer();
+        }
+    }
+
+    // 게임 시작 시 난이도 선택 화면 표시
+    showScreen(difficultySelection);
+</script>
+
+</body>
+</html>
